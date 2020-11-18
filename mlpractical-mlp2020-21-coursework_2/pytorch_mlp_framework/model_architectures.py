@@ -171,7 +171,7 @@ class ConvolutionalProcessingBlock(nn.Module):
                                               padding=self.padding, stride=1)
 
         out = self.layer_dict['conv_1'].forward(out)
-        #out = F.leaky_relu(out)
+        out = F.leaky_relu(out)
 
         print(out.shape)
 
@@ -182,7 +182,7 @@ class ConvolutionalProcessingBlock(nn.Module):
         #out = F.leaky_relu(out)
 
         out = self.layer_dict['conv_1'].forward(out)
-        #out = F.leaky_relu(out)
+        out = F.leaky_relu(out)
 
         return out
 
