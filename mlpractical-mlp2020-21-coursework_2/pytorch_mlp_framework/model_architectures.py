@@ -212,7 +212,7 @@ class ConvolutionalDimensionalityReductionBlock(nn.Module):
         out = self.layer_dict['conv_0'].forward(out)
         #out = F.leaky_relu(out)
 
-        out = F.avg_pool2d(out, self.reduction_factor)
+        out = F.max_pool2d(out, self.reduction_factor)
 
         self.layer_dict['conv_1'] = nn.Conv2d(in_channels=out.shape[1], out_channels=self.num_filters, bias=self.bias,
                                               kernel_size=self.kernel_size, dilation=self.dilation,
@@ -229,7 +229,7 @@ class ConvolutionalDimensionalityReductionBlock(nn.Module):
         out = self.layer_dict['conv_0'].forward(out)
         #out = F.leaky_relu(out)
 
-        out = F.avg_pool2d(out, self.reduction_factor)
+        out = F.max_pool2d(out, self.reduction_factor)
 
         out = self.layer_dict['conv_1'].forward(out)
         out = F.leaky_relu(out)
@@ -299,7 +299,7 @@ class ConvolutionalNetwork(nn.Module):
                 reduction_factor=2)
             out = self.layer_dict['reduction_block_{}'.format(i)].forward(out)
 
-        out = F.avg_pool2d(out, out.shape[-1])
+        out = F.max_pool2d(out, out.shape[-1])
         print('shape before final linear layer', out.shape)
         out = out.view(out.shape[0], -1)
         self.logit_linear_layer = nn.Linear(in_features=out.shape[1],  # add a linear layer
