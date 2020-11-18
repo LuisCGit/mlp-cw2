@@ -303,7 +303,7 @@ class ConvolutionalNetwork(nn.Module):
                 print("Out shape is: ")
                 print(out.shape)
 
-        out = F.avg_pool2d(out, out.shape[-1])
+        #out = F.avg_pool2d(out, out.shape[-1])
         print('shape before final linear layer', out.shape)
         out = out.view(out.shape[0], -1)
         self.logit_linear_layer = nn.Linear(in_features=out.shape[1],  # add a linear layer
