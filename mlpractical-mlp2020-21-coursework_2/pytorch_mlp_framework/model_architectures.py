@@ -327,7 +327,7 @@ class ConvolutionalNetwork(nn.Module):
             if i != self.num_stages - 1:
                 out = self.layer_dict['reduction_block_{}'.format(i)].forward(out)
 
-        out = F.avg_pool2d(out, out.shape[-1])
+        #out = F.avg_pool2d(out, out.shape[-1])
         out = out.view(out.shape[0], -1)  # flatten outputs from (b, c, h, w) to (b, c*h*w)
         out = self.logit_linear_layer(out)  # pass through a linear layer to get logits/preds
         return out
