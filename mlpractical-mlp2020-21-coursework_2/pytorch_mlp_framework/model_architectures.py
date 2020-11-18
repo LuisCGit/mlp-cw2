@@ -291,17 +291,17 @@ class ConvolutionalNetwork(nn.Module):
                                                                                          kernel_size=3, dilation=1,
                                                                                          padding=1)
                 out = self.layer_dict['block_{}_{}'.format(i, j)].forward(out)
-            if i != self.num_stages - 1 :
-                self.layer_dict['reduction_block_{}'.format(i)] = self.dimensionality_reduction_block_type(
-                    input_shape=out.shape,
-                    num_filters=self.num_filters, bias=True,
-                    kernel_size=3, dilation=1,
-                    padding=1,
-                    reduction_factor=2)
-                out = self.layer_dict['reduction_block_{}'.format(i)].forward(out)
-                print("stage indices are: " + str(i) + ", " + str(j))
-                print("Out shape is: ")
-                print(out.shape)
+            # if i != self.num_stages - 1 :
+            #     self.layer_dict['reduction_block_{}'.format(i)] = self.dimensionality_reduction_block_type(
+            #         input_shape=out.shape,
+            #         num_filters=self.num_filters, bias=True,
+            #         kernel_size=3, dilation=1,
+            #         padding=1,
+            #         reduction_factor=2)
+            #     out = self.layer_dict['reduction_block_{}'.format(i)].forward(out)
+            #     print("stage indices are: " + str(i) + ", " + str(j))
+            #     print("Out shape is: ")
+            #     print(out.shape)
 
         #out = F.avg_pool2d(out, out.shape[-1])
         print('shape before final linear layer', out.shape)
@@ -324,8 +324,8 @@ class ConvolutionalNetwork(nn.Module):
         for i in range(self.num_stages):  # for number of layers times
             for j in range(self.num_blocks_per_stage):
                 out = self.layer_dict['block_{}_{}'.format(i, j)].forward(out)
-            if i != self.num_stages - 1:
-                out = self.layer_dict['reduction_block_{}'.format(i)].forward(out)
+            # if i != self.num_stages - 1:
+            #     out = self.layer_dict['reduction_block_{}'.format(i)].forward(out)
 
         #out = F.avg_pool2d(out, out.shape[-1])
         out = out.view(out.shape[0], -1)  # flatten outputs from (b, c, h, w) to (b, c*h*w)
