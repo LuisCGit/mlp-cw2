@@ -324,7 +324,8 @@ class ConvolutionalNetwork(nn.Module):
         for i in range(self.num_stages):  # for number of layers times
             for j in range(self.num_blocks_per_stage):
                 out = self.layer_dict['block_{}_{}'.format(i, j)].forward(out)
-            out = self.layer_dict['reduction_block_{}'.format(i)].forward(out)
+            if != self.num_stages - 1:
+                out = self.layer_dict['reduction_block_{}'.format(i)].forward(out)
 
         out = F.avg_pool2d(out, out.shape[-1])
         out = out.view(out.shape[0], -1)  # flatten outputs from (b, c, h, w) to (b, c*h*w)
