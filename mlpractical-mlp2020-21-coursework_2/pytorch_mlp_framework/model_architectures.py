@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 
 
 class FCCNetwork(nn.Module):
@@ -186,6 +187,52 @@ class ConvolutionalProcessingBlock(nn.Module):
 
         return out
 
+class DenseConvolutionalProcessingBlock(nn.Module):
+    def __init__(self, input_shape, num_filters, kernel_size, padding, bias, dilation):
+        super(DenseConvolutionalProcessingBlock, self).__init__()
+
+        self.num_filters = num_filters
+        self.kernel_size = kernel_size
+        self.input_shape = input_shape
+        self.padding = padding
+        self.bias = bias
+        self.dilation = dilation
+
+        self.build_module()
+
+    def build_module(self):
+        self.layer_dict = nn.ModuleDict()
+        x = torch.zeros(self.input_shape)
+        out = x
+
+        self.layer_dict['conv_0'] = nn.Conv2d(in_channels=out.shape[1], out_channels=self.num_filters, bias=self.bias,
+                                              kernel_size=self.kernel_size, dilation=self.dilation,
+                                              padding=self.padding, stride=1)
+
+        out = self.layer_dict['conv_0'].forward(out)
+        #out = F.leaky_relu(out)
+
+        self.layer_dict['conv_1'] = nn.Conv2d(in_channels=out.shape[1], out_channels=self.num_filters, bias=self.bias,
+                                              kernel_size=self.kernel_size, dilation=self.dilation,
+                                              padding=self.padding, stride=1)
+
+        out = self.layer_dict['conv_1'].forward(out)
+        out = F.leaky_relu(out)
+
+        print(out.shape)
+
+    def forward(self, x):
+        if isinstance(x, Tensor):
+            x = [x]
+        out = x
+        out = torch.cat(out,1)
+        out = self.layer_dict['conv_0'].forward(out)
+        #out = F.leaky_relu(out)
+
+        out = self.layer_dict['conv_1'].forward(out)
+        out = F.leaky_relu(out)
+
+        return out
 
 class ConvolutionalDimensionalityReductionBlock(nn.Module):
     def __init__(self, input_shape, num_filters, kernel_size, padding, bias, dilation, reduction_factor):
@@ -236,6 +283,47 @@ class ConvolutionalDimensionalityReductionBlock(nn.Module):
 
         return out
 
+class DenseBlock(nn.Module):
+    def __init__(self, input_shape, num_filters, kernel_size, padding, bias, dilation,
+                 num_stages,block_index,processing_block_type=DenseConvolutionalProcessingBlock,dimensionality_reduction_block_type=ConvolutionalDimensionalityReductionBlock):
+        super(DenseBlock, self).__init__()
+
+        self.num_filters = num_filters
+        self.kernel_size = kernel_size
+        self.input_shape = input_shape
+        self.padding = padding
+        self.bias = bias
+        self.dilation = dilation
+        self.num_stages = num_stages
+        self.block_index = block_index
+        self.processing_block_type = processing_block_type
+
+        self.build_module()
+    def build_module(self):
+        self.layer_dict = nn.ModuleDict()
+        x = torch.zeros(self.input_shape)
+        out = x
+        for i in range(self.num_stages):
+            shape = list(self.input_shape)
+            shape[1] = shape[1] + i*self.num_filters
+
+            self.layer_dict['dense_block_{}_{}'.format(self.block_index, i)] = self.processing_block_type(input_shape = shape,
+                                                                                     num_filters=self.num_filters,
+                                                                                     bias=self.bias,
+                                                                                     kernel_size=3, dilation=1,
+                                                                                     padding=1)
+
+    def forward(self, init_features):
+        features = [init_features]
+        for name, layer in self.layer_dict.items():
+            new_features = layer(features)
+            features.append(new_features)
+        return torch.cat(features, 1)
+
+
+
+
+
 
 class ConvolutionalNetwork(nn.Module):
     def __init__(self, input_shape, num_output_classes, num_filters,
@@ -284,13 +372,20 @@ class ConvolutionalNetwork(nn.Module):
         out = self.layer_dict['input_conv'].forward(out)
         # torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True)
         for i in range(self.num_stages):  # for number of layers times
-            for j in range(self.num_blocks_per_stage):
-                self.layer_dict['block_{}_{}'.format(i, j)] = self.processing_block_type(input_shape=out.shape,
-                                                                                         num_filters=self.num_filters,
-                                                                                         bias=self.use_bias,
-                                                                                         kernel_size=3, dilation=1,
-                                                                                         padding=1)
-                out = self.layer_dict['block_{}_{}'.format(i, j)].forward(out)
+            if self.processing_block_type == ConvolutionalProcessingBlock:
+                for j in range(self.num_blocks_per_stage):
+                    self.layer_dict['block_{}_{}'.format(i, j)] = self.processing_block_type(input_shape=out.shape,
+                                                                                             num_filters=self.num_filters,
+                                                                                             bias=self.use_bias,
+                                                                                             kernel_size=3, dilation=1,
+                                                                                             padding=1)
+                    out = self.layer_dict['block_{}_{}'.format(i, j)].forward(out)
+
+            else: #if not ConvolutionalProcessingBlock we are using Dense blocks (DenseNet strategy)
+                self.layer_dict['dense_block_{}'.format(i)] = DenseBlock(input_shape = out.shape, num_filters = self.num_filters, block_index = i,
+                                                                         kernel_size = 3, padding = 1, bias = self.use_bias,
+                                                                         dilation = 1, num_stages = self.num_stages)
+                out = self.layer_dict['dense_block_{}'.format(i)].forward(out)
             self.layer_dict['reduction_block_{}'.format(i)] = self.dimensionality_reduction_block_type(
                 input_shape=out.shape,
                 num_filters=self.num_filters, bias=True,
@@ -318,8 +413,11 @@ class ConvolutionalNetwork(nn.Module):
         out = x
         out = self.layer_dict['input_conv'].forward(out)
         for i in range(self.num_stages):  # for number of layers times
-            for j in range(self.num_blocks_per_stage):
-                out = self.layer_dict['block_{}_{}'.format(i, j)].forward(out)
+            if self.processing_block_type == ConvolutionalProcessingBlock:
+                for j in range(self.num_blocks_per_stage):
+                    out = self.layer_dict['block_{}_{}'.format(i, j)].forward(out)
+            else:
+                out = self.layer_dict['dense_block_{}'.format(i)].forward(out)
             out = self.layer_dict['reduction_block_{}'.format(i)].forward(out)
 
         out = F.avg_pool2d(out, out.shape[-1])

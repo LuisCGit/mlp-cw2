@@ -49,6 +49,9 @@ if args.block_type == 'conv_block':
 elif args.block_type == 'empty_block':
     processing_block_type = EmptyBlock
     dim_reduction_block_type = EmptyBlock
+elif args.block_type == 'dense':
+    processing_block_type = DenseConvolutionalProcessingBlock
+    dim_reduction_block_type = ConvolutionalDimensionalityReductionBlock
 else:
     raise ModuleNotFoundError
 
