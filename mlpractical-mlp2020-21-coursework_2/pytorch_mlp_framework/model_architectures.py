@@ -411,7 +411,7 @@ class ConvolutionalNetwork(nn.Module):
             else: #if not ConvolutionalProcessingBlock we are using Dense blocks (DenseNet strategy)
                 self.layer_dict['dense_block_{}'.format(i)] = DenseBlock(input_shape = out.shape, num_filters = self.num_filters, block_index = i,
                                                                          kernel_size = 3, padding = 1, bias = self.use_bias,
-                                                                         dilation = 1, num_stages = self.num_stages)
+                                                                         dilation = 1, num_stages = self.num_blocks_per_stage)
                 out = self.layer_dict['dense_block_{}'.format(i)].forward(out)
             self.layer_dict['reduction_block_{}'.format(i)] = self.dimensionality_reduction_block_type(
                 input_shape=out.shape,
